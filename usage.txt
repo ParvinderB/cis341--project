@@ -1,24 +1,40 @@
-=================================================
 
-Linux system health monitor and security daemon |
-
-=================================================
-
-USAGE: ./sysAudit.sh [OPTIONS]
-
+==================================================
+|                                                |
+|Linux system health monitor and security daemon |
+|                                                |
+==================================================
+|
+|    USAGE: ./sysAudit.sh [OPTIONS]
+|
 ================================================
-
-OPTIONS:
-
--h       prints help 
---help   same as -h
-
+|
+|   OPTIONS:
+|
+|   -h       prints help 
+|   --help   same as -h
+|
 ================================================
-
-EXAMPLES: 
-./sysAudit.sh -h 
-./sysAudit.sh --help
-
-
-
+|
+|    EXAMPLES: 
+|    ./sysAudit.sh -h 
+|    ./sysAudit.sh --help                       
+|                                               
 =================================================
+|	configuration
+|	
+|	file: sysaudit.cfg
+|
+|
+|
+================================================
+|	exit codes:
+|
+|	0	SUCCESS	
+|	1	GENERIC_ERROR
+|	2	IDENTITY_VIOLATION
+|	3	MISSING_CONFIG
+|	4	INVALID_WORKSPACE
+|	5	DISK_CEILING_REACHED
+===============================================
+

@@ -6,7 +6,7 @@
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 show_help(){
-	cat $SCRIPT_DIR/usage.txt
+	cat "$SCRIPT_DIR/usage.txt"
 }
 
 if [ $# -eq 0 ]; then
@@ -14,3 +14,17 @@ if [ $# -eq 0 ]; then
 	exit 0
 fi
 
+case "$1" in 
+
+	-h)
+	show_help
+	;;
+	--help)
+	show_help
+	;;
+	*)
+	echo "invalid argument" >&2
+	show_help
+	exit 1
+	;;
+esac
