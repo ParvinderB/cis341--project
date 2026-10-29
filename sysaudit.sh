@@ -4,6 +4,8 @@
 ## main bash script 
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+CONFIG_FILE="$SCRIPT_DIR/sysaudit.cfg"
+
 
 show_help(){
 	cat "$SCRIPT_DIR/usage.txt"
