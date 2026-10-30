@@ -108,7 +108,7 @@ head -c 3000  /dev/zero > "$WS/audit_2026-10-20.tar.gz"
 head -c 10240 /dev/zero > "$WS/audit_2026-10-27.tar.gz"
 head -c 5000  /dev/zero > "$WS/audit_2026-10-23.zip"
 head -c 50000 /dev/zero > "$WS/scan_99.audit"          # not an archive
-touch -d '2026-10-27 00:00:04' "$WS/audit_2026-10-27.tar.gz"
+touch -t 202610270000.04 "$WS/audit_2026-10-27.tar.gz"   # -t = local time on GNU and uutils
 run archive_summary; code=$?
 [ "$code" -eq 0 ];                                                     result $? "summary returns 0"
 grep -q 'Archive summary: 3 archives' "$LOG";                          result $? "counts only the 3 archives"
