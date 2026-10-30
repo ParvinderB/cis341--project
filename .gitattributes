@@ -1,0 +1,8 @@
+# Always use Linux line endings (LF) for files the scripts read, even when
+# someone edits them on Windows. CRLF breaks bash with "$'\r': command not found".
+*.sh      text eol=lf
+*.cfg     text eol=lf
+*.txt     text eol=lf
+*.md      text eol=lf
+*.service text eol=lf
+*.timer   text eol=lf

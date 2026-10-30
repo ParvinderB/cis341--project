@@ -1,0 +1,5 @@
+# Files the daemon and the tests create - don't commit them
+*.log
+*.audit
+*.tar.gz
+*.zip
