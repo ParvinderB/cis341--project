@@ -36,7 +36,7 @@
 |	3	MISSING_CONFIG
 |	4	INVALID_WORKSPACE
 |	5	DISK_CEILING_REACHED
-| 8 ARCHIVE_FAILED
-| 9 PRUNE_FAILED
+|   8 ARCHIVE_FAILED
+|   9 PRUNE_FAILED
 ===============================================
 
