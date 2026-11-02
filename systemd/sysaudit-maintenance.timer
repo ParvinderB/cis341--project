@@ -1,0 +1,20 @@
+#wakes up the archive job everynight at midnight
+#Install to /etc/systemd/system/sysaudit-maintenance.timer
+#
+#these are two files, a timer and a service. by default the timer starts the service with the same 
+# name automatcall
+#
+#OnCalender is a "specific day and time" option. *_*_* means every day.
+#
+#The reason for using this instead of the cron job is that cron job restarts at the start of each month. 
+#as compared to the timer which fires up daily and does not restart each month.
+#to activate: sudo systemctl enable --now sysaudit-maintenance.timer
+
+[Unit]
+Description=Nightly trigger for the sysaudit job
+
+[Timer]
+OnCalendar=*-*-* 00:00:00
+
+[Install]
+WantedBy=multi-user.target
