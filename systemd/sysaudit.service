@@ -1,5 +1,7 @@
 #start the sysaudit daemon automatically at boot.
 #Install to /etc/systemd/system/sysaudit.service
+#
+#Note: do not enable this service until sysaudit.sh understands --daemon.
 
 [Unit]
 Description=sysaudit -System Health Monitor and security Daemon
