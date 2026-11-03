@@ -13,13 +13,31 @@
 |
 |   -h       prints help 
 |   --help   same as -h
+|   --daemon runs the scan loop in the background
 |
 ================================================
 |
 |    EXAMPLES: 
 |    ./sysAudit.sh -h 
-|    ./sysAudit.sh --help                       
+|    ./sysAudit.sh --help                     
+|    ./sysaudit.sh --daemon
 |                                               
+=================================================
+|
+|	ARCHIVE JOB (sysaudit_archive.sh)
+|
+|	Started every night at midnight by
+|	sysaudit-maintenanace.timer.
+|	It packs all the *.audit files into one .tar.gz,
+|	deletes the originals, then deletes archieves
+|	older than RETENTION_DAYS.
+|
+|	Usage: ./sysaudit_archieve.sh [OPTIONS]
+|	
+|	OPTIONS:
+|	-f/ --force    runs nows, ignore the 3 day rule
+|			(test purpose only)
+|
 =================================================
 |	configuration
 |	
@@ -36,7 +54,9 @@
 |	3	MISSING_CONFIG
 |	4	INVALID_WORKSPACE
 |	5	DISK_CEILING_REACHED
-| 8 ARCHIVE_FAILED
-| 9 PRUNE_FAILED
+|	6
+|	7
+|	8	ARCHIVE_FAILED
+|	9	PRUNE_FAILED
 ===============================================
 
