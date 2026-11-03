@@ -1,122 +1,150 @@
 #!/bin/bash
 
-# File		:sysaudit_archive.sh
-#Project	:CIS341 Fall 2026
-#Task		:archive old *.audit reports, then prune old archives. 
-#Author		:Parvinder Singh
-#Date		:2026-10-31
-#
-#run by sysaudit-archive.timer avery night at midnight.
-#the script will decide if the work is due: it only run when CLEAN_INTERVAL_DAYS 
-#have passed.
+## File		:sysaudit_archive.sh
+##Project	:CIS341 Fall 2026
+##Task		:archive old *.audit reports, then prune old archives. 
+##Author		:Parvinder Singh
+##Date		:2026-10-31
+##
+##run by sysaudit-archive.timer avery night at midnight.
+##the script will decide if the work is due: it only run when CLEAN_INTERVAL_DAYS 
+##have passed.
+##
+##uasage: sysaudit_archive.sh [-f| --force]
 
-SCRIPT_DIR=$(dirname "$0")
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="$SCRIPT_DIR/sysaudit.cfg"
+RC=0
+ 
+## ---------- the one option: --force skips the 3-day rule ----------
+ 
 FORCE=0
-
-# 2. Check command-line flags (-f / --force or --config=...)
-for arg in "$@"; do
-    case "$arg" in
-        -f|--force)
-            FORCE=1
-            ;;
-        --config=*)
-            CONFIG_FILE="${arg#--config=}"
-            ;;
-        *)
-            echo "Error: Unknown argument '$arg'" >&2
-            exit 1
-            ;;
-    esac
+case "$1" in
+	-f|--force)
+		FORCE=1
+		;;
+	'')
+		;;
+	*)
+		echo "sysaudit_archive: unknown argument '$1'" 1>&2
+		exit 1
+		;;
+esac
+ 
+## ---------- load the team's code, the config and the log ----------
+ 
+for part in sysaudit_logger.sh sysaudit_summary.sh sysaudit_ceiling.sh; do
+	if [ ! -f "$SCRIPT_DIR/$part" ]; then                  # -f = regular file, book p.206
+		echo "sysaudit_archive: required file $part not found" 1>&2
+		exit 1
+	fi
+	source "$SCRIPT_DIR/$part"
 done
+ 
+load_config "$CONFIG_FILE" || exit $?     # reads sysaudit.cfg: 3 = missing, 7 = bad line
+init_log || exit $?                       # 3 = no LOG_FILE, 6 = cannot write the log
+ 
+## logs the error (log_exception also prints it to STDERR) and ends the script.
 
-# 3. Load teammate helper scripts (logging, summary, disk ceiling)
-for part in sysaudit_logger.sh sysaudit_summary.sh sysaudit_celing.sh; do
-    if [ ! -f "$SCRIPT_DIR/$part" ]; then
-        echo "Error: Required file $part not found" >&2
-        exit 1
-    fi
-    source "$SCRIPT_DIR/$part"
-done
+die(){     # die CODE "message"
+	log_exception "$1" "$2"
+	exit "$1"
+}
+ 
+## ---------- check the settings ----------
+ 
+require_setting(){     # require_setting NAME VALUE     
+	if [ -z "$2" ]; then                                # (-z = empty, book p.205)
+		die 7 "setting $1 is missing or empty in sysaudit.cfg"
+	fi
+}
+ 
+require_setting AUDIT_DIR "$AUDIT_DIR"
+require_setting ARCHIVE_EXTENSIONS "$ARCHIVE_EXTENSIONS"
+require_setting ARCHIVE_PREFIX "$ARCHIVE_PREFIX"
+require_setting LAST_RUN_FILENAME "$LAST_RUN_FILENAME"
+ 
+## -ge only works on whole numbers, so text like "abc" or an empty value fails
 
-# 4. Check if config file exists and load it (Exit Code 3 if missing)
-if [ ! -r "$CONFIG_FILE" ]; then
-    echo "Error: Config file $CONFIG_FILE not found or not readable" >&2
-    exit 3
+if [ ! "$CLEANUP_INTERVAL_DAYS" -ge 1 ] 2>/dev/null; then
+	die 7 "CLEANUP_INTERVAL_DAYS must be a whole number, 1 or more"
 fi
-
-load_config "$CONFIG_FILE" || exit $?
-init_log || exit $?
-
-# Set default values if any setting is missing in sysaudit.cfg
-CLEANUP_INTERVAL_DAYS="${CLEANUP_INTERVAL_DAYS:-3}"
-RETENTION_DAYS="${RETENTION_DAYS:-14}"
-ARCHIVE_PREFIX="${ARCHIVE_PREFIX:-audit_archive}"
-LAST_RUN_FILENAME="${LAST_RUN_FILENAME:-.last_archive_run}"
-ARCHIVE_EXTENSIONS="${ARCHIVE_EXTENSIONS:-tar.gz,zip}"
-
-# 5. Check that workspace directory exists and is writable (Exit Code 4)
-if [ ! -d "$AUDIT_DIR" ] || [ ! -w "$AUDIT_DIR" ]; then
-    log_exception 4 "Workspace $AUDIT_DIR is missing or not writable"
-    exit 4
+if [ ! "$RETENTION_DAYS" -ge 1 ] 2>/dev/null; then
+	die 7 "RETENTION_DAYS must be a whole number, 1 or more"
 fi
-
-cd "$AUDIT_DIR" || exit 4
-log_msg INFO "Archive job started (interval=${CLEANUP_INTERVAL_DAYS}d, retention=${RETENTION_DAYS}d)"
-
-# 6. Spec #3: Check if 3 days have passed since the last run
-STAMP="$AUDIT_DIR/$LAST_RUN_FILENAME"
-today_days=$(( $(date +%s) / 86400 ))
-
-if [ "$FORCE" -eq 0 ] && [ -f "$STAMP" ]; then
-    last_days=$(cat "$STAMP")
-    days_passed=$(( today_days - last_days ))
-
-    if [ "$days_passed" -lt "$CLEANUP_INTERVAL_DAYS" ]; then
-        log_msg INFO "Not due yet: only $days_passed day(s) passed since last run."
-        exit 0
-    fi
+ 
+## go into the workspace so file names are short. cd fails if it is not a folder.
+cd "$AUDIT_DIR" || die 4 "workspace is missing or not a folder: $AUDIT_DIR"
+ 
+log_msg INFO "Archive job started (every $CLEANUP_INTERVAL_DAYS days, keep archives $RETENTION_DAYS days, force=$FORCE)"
+ 
+## ---------- is the job due? (the "every 3 days" rule) ----------
+ 
+today_n=$(( `date +%s` / 86400 ))
+last=0
+if [ -f "$LAST_RUN_FILENAME" ]; then
+	read last < "$LAST_RUN_FILENAME"       # the day number saved by the last good run (book p.202)
 fi
-
-# 7. Spec #3: Compress all *.audit files into .tar.gz and delete raw files
-if ls *.audit >/dev/null 2>&1; then
-    ARCHIVE_NAME="${ARCHIVE_PREFIX}_$(date +%Y%m%d_%H%M%S).tar.gz"
-
-    if tar -czf "$AUDIT_DIR/$ARCHIVE_NAME" *.audit; then
-        log_msg INFO "Created archive: $ARCHIVE_NAME"
-        rm -f *.audit
-        log_msg INFO "Deleted original raw .audit files"
-    else
-        log_exception 8 "tar failed to compress .audit files"
-        exit 8
-    fi
+if [ -z "$last" ]; then
+	last=0
+fi
+since=$(( today_n - last ))
+ 
+if [ "$FORCE" -eq 0 ] && [ "$since" -lt "$CLEANUP_INTERVAL_DAYS" ]; then     # && in an if, book p.205
+	log_msg INFO "Not due yet: last run was $since day(s) ago, need $CLEANUP_INTERVAL_DAYS"
+	exit 0
+fi
+ 
+## ---------- task 3: archive every *.audit file, then delete the originals ----------
+## ls | wc -l counts the files (book p.209). tar czf packs them; the originals are
+## only deleted if tar succeeded.
+ 
+count=`ls *.audit 2>/dev/null | wc -l`
+if [ "$count" -eq 0 ]; then
+	log_msg INFO "No .audit files to archive"
 else
-    log_msg INFO "No raw .audit files found to archive"
+	ARCHIVE_NAME="${ARCHIVE_PREFIX}_`date +%Y%m%d_%H%M%S`.tar.gz"
+	if tar czf "$ARCHIVE_NAME" *.audit; then
+		log_msg INFO "Archive created: $ARCHIVE_NAME ($count files)"
+		if rm -f *.audit; then                     # rm -f, book p.112
+			log_msg INFO "Deleted the $count original .audit files"
+		else
+			log_msg WARN "Could not delete some original .audit files"
+			RC=8
+		fi
+	else
+		rm -f "$ARCHIVE_NAME"                      # throw away the broken archive
+		die 8 "tar failed, the original files were kept"
+	fi
 fi
-
-# 8. Spec #6: Delete archives older than RETENTION_DAYS (14 days)
-pruned=0
-for ext in $(echo "$ARCHIVE_EXTENSIONS" | tr ',' ' '); do
-    for file in *."$ext"; do
-        if [ -f "$file" ]; then
-            # Check if the archive file is older than RETENTION_DAYS
-            if [ -n "$(find "./$file" -mtime +"$RETENTION_DAYS")" ]; then
-                rm -f "./$file"
-                pruned=$(( pruned + 1 ))
-                log_msg INFO "Deleted expired archive: $file"
-            fi
-        fi
-    done
+ 
+## ---------- task 6: delete archives older than RETENTION_DAYS ----------
+## find -mtime +N lists files older than N days, the same test as the book's
+## cleanup job (p.112, p.118). "+14" means 15 or more FULL days old.
+## sed turns "tar.gz,zip" into "tar.gz zip" (book p.200) and for loop goes through them.
+ 
+for ext in $(echo "$ARCHIVE_EXTENSIONS" | sed 's/,/ /g'); do
+	old=$(find . -name "*.$ext" -mtime +"$RETENTION_DAYS")
+	for f in $old; do
+		if rm -f "$f"; then
+			log_msg INFO "Pruned old archive: $f"
+		else
+			log_msg WARN "Could not delete old archive: $f"
+			RC=9
+		fi
+	done
 done
-log_msg INFO "Pruning finished: removed $pruned old archive(s)"
-
-# 9. Save today's day number into .last_archive_run
-echo "$today_days" > "$STAMP"
-log_msg INFO "Updated last-run file ($STAMP) with day $today_days"
-
-# 10. Run Person B's disk ceiling check (Spec #8) and archive summary (Spec #7)
-check_disk_celing
-archive_summary
-
-log_msg INFO "Archive job finished successfully"
-exit 0
+ 
+## ---------- finish ----------
+## remember this run only if everything worked, so a failed night is tried again
+ 
+if [ "$RC" -eq 0 ]; then
+	echo "$today_n" > "$LAST_RUN_FILENAME"
+	log_msg INFO "Last-run day saved: $today_n"
+fi
+ 
+check_disk_ceiling          # teammate B, task 8: warns in the log if AUDIT_DIR is too big
+archive_summary             # teammate B, task 7: writes the archive summary line
+ 
+log_msg INFO "Archive job finished (exit code $RC)"
+exit "$RC"
