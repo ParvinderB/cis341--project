@@ -11,19 +11,29 @@
 |
 |   OPTIONS:
 |
-|   -h       prints help 
-|   --help   same as -h
-|   --daemon runs the scan loop in the background
+|	-h		prints help 
+|	--help		same as -h
+|	--run		runs audit cycle once
+|	--daemon	runs in daemon mode
 |
-================================================
+=====================================================
 |
 |    EXAMPLES: 
-|    ./sysAudit.sh -h 
-|    ./sysAudit.sh --help                     
-|    ./sysaudit.sh --daemon
-|                                               
-=================================================
 |
+|    ./sysAudit.sh --help                       
+|    ./sysaudit.sh --run
+|    ./sysaudit.sh --daemon
+|	                                           
+======================================================
+|	CONFIGURATION:
+|	file: sysaudit.cfg
+|	
+|
+|
+|
+|
+|
+|=====================================================
 |	ARCHIVE JOB (sysaudit_archive.sh)
 |
 |	Started every night at midnight by
@@ -32,21 +42,13 @@
 |	deletes the originals, then deletes archieves
 |	older than RETENTION_DAYS.
 |
-|	Usage: ./sysaudit_archieve.sh [OPTIONS]
+|	Usage: ./sysaudit_archive.sh [OPTIONS]
 |	
 |	OPTIONS:
 |	-f/ --force    runs nows, ignore the 3 day rule
 |			(test purpose only)
-|
-=================================================
-|	configuration
-|	
-|	file: sysaudit.cfg
-|
-|
-|
-================================================
-|	exit codes:
+=======================================================
+|	EXIT CODES:
 |
 |	0	SUCCESS	
 |	1	GENERIC_ERROR
@@ -54,9 +56,8 @@
 |	3	MISSING_CONFIG
 |	4	INVALID_WORKSPACE
 |	5	DISK_CEILING_REACHED
-|	6
-|	7
+|	6	LOG FILE NOT WRITTABLE
+|	7	BAD CONFIGURATION VALUES
 |	8	ARCHIVE_FAILED
 |	9	PRUNE_FAILED
 ===============================================
-

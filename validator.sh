@@ -1,0 +1,59 @@
+#!/bin/bash
+
+##config file validation functions to check variable correctness for main script
+## author hamza
+
+validate_positive_int(){
+
+local value="$1"
+
+if [[ -n "$value" && "$value" != *[!0-9]* && "$value" == *[1-9]* ]]; then
+	return 0
+else
+	return 7
+fi
+}
+
+validate_config(){
+
+if validate_positive_int "$SCAN_INTERVAL_SECONDS"; then
+	echo "Scan interval is valid"
+else
+	echo "Scan interval is invalid" >&2
+	return 7
+fi
+
+if validate_positive_int "$MAX_DISK_USAGE"; then
+        echo "Max disk usage is valid"
+else
+        echo "Max disk usage is invalid" >&2
+        return 7 
+fi
+
+if validate_positive_int "$RETENTION_DAYS"; then
+        echo "Retention Days is valid"
+else
+        echo "Retention Days is invalid" >&2
+        return 7 
+fi
+
+
+if validate_positive_int "$CLEANUP_INTERVAL_DAYS"; then
+        echo "cleanup interval is valid"
+else
+        echo "cleanup interval is invalid" >&2
+        return 7 
+fi
+
+if [[ "$LOG_LEVEL" != "ERROR" && "$LOG_LEVEL" != "WARN" && "$LOG_LEVEL" != "INFO" && "$LOG_LEVEL" != "DEBUG" && "$LOG_LEVEl" != "WARNING" ]]; then
+	echo "Invalid Log level" >&2
+	return 7
+fi
+
+if [[ "$DEFAULT_MODE" != "daemon" && "$DEFAULT_MODE" != "run" ]]; then
+	echo "Invalid run mode, change DEFAULT_MODE to run or daemon" >&2
+	return 7
+fi
+
+return 0
+}
